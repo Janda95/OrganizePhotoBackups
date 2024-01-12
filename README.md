@@ -21,7 +21,9 @@ Used 2 libraries requiring setup using pip:
 
 1. Sort, label, and rename large groups of photos and videos on an external storage device
 1. Create Year and Month folders
-1. Move files to folders, keeping the same naming structure as before.
+1. Move files to folders, keeping the previous naming structure.
+1. Setup for adding and testing additional future file types included
 
 ### TODO:
-1. Currently supports only .jpg file types: .png and .mp4 file types should be supported as well
+1. Currently supports only .jpg and .png file types
+1. .mp4 file types will be implemented

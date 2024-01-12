@@ -5,16 +5,25 @@ import shutil
 from tqdm import tqdm
 from PIL import Image
 
+DEFAULT_DEST = "MetadataNotFound"
 
-def find_jpgs_in_dir(files):
+
+def find_media_in_dir(files):
     '''Return all jpg files in directory'''
-    jpgs = []
+    photo_media = []
+    video_media = []
+    photo_types = ["jpg", "png"]
+    video_types = ["mp4"]
+
     for file_name in files:
         # split and check last token, -> jpg
         tokens = file_name.split(".")
-        if tokens[-1] == "jpg":
-            jpgs.append(f"{file_name}")
-    return jpgs
+        if tokens[-1] in photo_types:
+            photo_media.append(f"{file_name}")
+        elif tokens[-1] in video_types:
+            video_media.append(f"{file_name}")
+
+    return photo_media, video_media
 
 
 def create_dir(filepath):
@@ -23,54 +32,18 @@ def create_dir(filepath):
         os.makedirs(filepath)
 
 
-def img_copy_n_sort(jpg_files, file_dir):
-    '''Logic handling copying and organizing photos'''
-    # Tracking image destinations
-    transactions = {}
+def move_media(file_dir, media_file, dest):
+    '''Move media file to destination'''
+    original = f"{file_dir}{media_file}"
+    dest = f"{dest}/{media_file}"
+    shutil.move(original, dest)
 
-    # Create default directory
-    default_dir = f'{file_dir}NoDateData'
-    create_dir(default_dir)
 
-    # Move each image and display progress
-    for jpg in tqdm(jpg_files):
-        try:
-            img = Image.open(f'{file_dir}{jpg}')
-        except Exception as e:
-            print(f"Invalid Image: {e}")
-
-        exif = img.getexif()
-        timestamp = exif.get(306, None)
-
-        # No Timestamp Metadata, Move image to default directory
-        if timestamp is None:
-            original = f"{file_dir}{jpg}"
-            dest = f"{default_dir}/{jpg}"
-            shutil.move(original, dest)
-
-            # Add record
-            val = transactions.get(default_dir, [])
-            val.append(jpg)
-            transactions[default_dir] = val
-            continue
-
-        time_tokens = timestamp.split()
-        date = time_tokens[0].split(":")
-
-        # prep paths/dir and move image
-        date_dir = f"{file_dir}{date[0]}_{date[1]}"
-        create_dir(date_dir)
-
-        original = f"{file_dir}{jpg}"
-        dest = f"{date_dir}/{jpg}"
-        shutil.move(original, dest)
-
-        # Add record
-        val = transactions.get(date_dir, [])
-        val.append(jpg)
-        transactions[date_dir] = val
-
-    return transactions
+def add_record(transactions, media_file, dest):
+    '''Add record to transactions'''
+    val = transactions.get(dest, [])
+    val.append(media_file)
+    transactions[dest] = val
 
 
 def pp_transactions(transactions):
@@ -82,23 +55,60 @@ def pp_transactions(transactions):
         print(msg)
 
 
-def main(jpg_dir):
+def video_copy_n_sort(videos, source_dir, transactions):
+    '''Logic handling copying and organizing video files'''
+    pass
+
+
+def img_copy_n_sort(jpg_files, source_dir, transactions):
+    '''Logic handling copying and organizing photos'''
+    # Create default directory
+    default_dir = f'{source_dir}{DEFAULT_DEST}'
+    create_dir(default_dir)
+
+    # Move each image and display progress
+    for pic in tqdm(jpg_files):
+        try:
+            img_file = Image.open(f'{source_dir}{pic}')
+        except Exception as e:
+            print(f"Invalid Image: {e}")
+
+        exif = img_file.getexif()
+        timestamp = exif.get(306, None)
+        date_dir = default_dir
+
+        # No Timestamp Metadata, Move image to default directory
+        if timestamp is None:
+            move_media(source_dir, pic, date_dir)
+            add_record(transactions, pic, date_dir)
+
+        else:
+            # Prepare paths/dir
+            time_tokens = timestamp.split()
+            date = time_tokens[0].split(":")
+            date_dir = f"{source_dir}{date[0]}_{date[1]}"
+            create_dir(date_dir)
+
+            move_media(source_dir, pic, date_dir)
+            add_record(transactions, pic, date_dir)
+
+
+def main(source_dir):
     '''Check Directory and find jpg files'''
     try:
-        arr = os.listdir(jpg_dir)
+        arr = os.listdir(source_dir)
     except Exception as e:
         print(f"Non-Valid Directory: {e}")
         return
 
-    jpgs = find_jpgs_in_dir(arr)
+    imgs, videos = find_media_in_dir(arr)
 
-    # Return message if no jpgs found
-    if len(jpgs) == 0:
-        print("No Jpgs found!")
+    # Return message if no media is found
+    if len(imgs) == 0 and len(videos) == 0:
+        print("No Media found in !")
         return
 
-    # confirm with user if these listed images should be moved
-    msg = f"{len(jpgs)} jpgs found in {os.getcwd()}/{jpg_dir}"
+    msg = f"{len(imgs)} images and {len(videos)} videos found in {os.getcwd()}/{source_dir}"
     print(msg)
 
     valid_res = False
@@ -112,7 +122,10 @@ def main(jpg_dir):
             return
 
     # Copy images into year_month dir and display transactions to user
-    transactions = img_copy_n_sort(jpgs, jpg_dir)
+    transactions = {}
+    img_copy_n_sort(imgs, source_dir, transactions)
+    video_copy_n_sort(videos, source_dir, transactions)
+
     pp_transactions(transactions)
 
 
@@ -120,9 +133,9 @@ if __name__ == "__main__":
     # Pass on optional filepath for jpg locations.
     try:
         # Format: ../ or DIR/
-        JPG_DIR = str(sys.argv[1])
+        SOURCE_DIR = str(sys.argv[1])
     except IndexError:
         print("Optional path not given, current directory used as default.")
-        JPG_DIR = "/"
+        SOURCE_DIR = "/"
 
-    main(JPG_DIR)
+    main(SOURCE_DIR)
