@@ -2,6 +2,7 @@
 import os
 import sys
 import shutil
+import ffmpeg
 from tqdm import tqdm
 from PIL import Image
 
@@ -57,14 +58,40 @@ def pp_transactions(transactions):
 
 def video_copy_n_sort(videos, source_dir, transactions):
     '''Logic handling copying and organizing video files'''
-    pass
+    default_dir = f'{source_dir}{DEFAULT_DEST}'
+
+    for vid in tqdm(videos):
+
+        vid_location = f'{source_dir}{vid}'
+
+        try:
+            probe = ffmpeg.probe(vid_location)
+        except ffmpeg.Error as e:
+            print(e.stderr, file=sys.stderr)
+            sys.exit(1)
+
+        video_stream = next(
+            (stream for stream in probe['streams'] if stream['codec_type'] == 'video'),
+            None)
+        if video_stream is None:
+            print('No video stream found', file=sys.stderr)
+            sys.exit(1)
+
+        try:
+            tokens = video_stream['tags']['creation_time'].split("-")
+            date_dir = f'{source_dir}{tokens[0]}_{tokens[1]}'
+        except Exception:
+            date_dir = default_dir
+
+        create_dir(date_dir)
+        move_media(source_dir, vid, date_dir)
+        add_record(transactions, vid, date_dir)
 
 
 def img_copy_n_sort(jpg_files, source_dir, transactions):
     '''Logic handling copying and organizing photos'''
     # Create default directory
     default_dir = f'{source_dir}{DEFAULT_DEST}'
-    create_dir(default_dir)
 
     # Move each image and display progress
     for pic in tqdm(jpg_files):
@@ -77,20 +104,15 @@ def img_copy_n_sort(jpg_files, source_dir, transactions):
         timestamp = exif.get(306, None)
         date_dir = default_dir
 
-        # No Timestamp Metadata, Move image to default directory
-        if timestamp is None:
-            move_media(source_dir, pic, date_dir)
-            add_record(transactions, pic, date_dir)
-
-        else:
-            # Prepare paths/dir
+        # Timestamp Metadata found, prepare date directory
+        if timestamp is not None:
             time_tokens = timestamp.split()
             date = time_tokens[0].split(":")
             date_dir = f"{source_dir}{date[0]}_{date[1]}"
-            create_dir(date_dir)
 
-            move_media(source_dir, pic, date_dir)
-            add_record(transactions, pic, date_dir)
+        create_dir(default_dir)
+        move_media(source_dir, pic, date_dir)
+        add_record(transactions, pic, date_dir)
 
 
 def main(source_dir):
