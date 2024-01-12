@@ -1,7 +1,15 @@
 # Organize_Photo-Backups
 
 ### Libraries and versions
-Created using Python 3.12.1
+Created using Python 3.12.1 with pyenv
+
+Optional Pyenv Setup:
+```
+pyenv virtualenv 3.12.1 <project-name>
+pyenv local <project-name>
+pip install --upgrade pip
+pip install ...
+```
 
 ### Setup and Execution
 Used 3 libraries requiring setup using pip and apt install:
