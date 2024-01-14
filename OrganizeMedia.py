@@ -1,4 +1,4 @@
-'''Python3 Script for organizing large groups of unorganized photos'''
+'''Python3 Script for organizing batches of jpg, png, and mp4 files with timestamp metadata'''
 import os
 import sys
 import shutil
