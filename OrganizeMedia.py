@@ -1,47 +1,20 @@
 '''Python3 Script for organizing batches of jpg, png, and mp4 files with timestamp metadata'''
 import os
 import sys
-import shutil
 import ffmpeg
 from tqdm import tqdm
 from PIL import Image
+import FileHandlerUtil as fhutil
+
 
 DEFAULT_DEST = 'Timestamp_Unavailable'
 
 
-def find_media_in_dir(files):
-    '''Return all jpg files in directory'''
-    photo_media = []
-    video_media = []
-    photo_types = ['jpg', 'png']
-    video_types = ['mp4']
-
-    for file_name in files:
-        # split and check last token, -> jpg
-        tokens = file_name.split('.')
-        if tokens[-1] in photo_types:
-            photo_media.append(f'{file_name}')
-        elif tokens[-1] in video_types:
-            video_media.append(f'{file_name}')
-
-    return photo_media, video_media
-
-
-def create_dir(filepath):
-    '''Create Directory if it does not exist'''
-    if not os.path.exists(filepath):
-        os.makedirs(filepath)
-
-
-def move_media(file_dir, media_file, dest):
-    '''Move media file to destination'''
-    original = f'{file_dir}{media_file}'
-    dest = f'{dest}/{media_file}'
-    shutil.move(original, dest)
-
-
-def add_record(transactions, media_file, dest):
+def add_record(transactions, media_file, dest, is_file_moved):
     '''Add record to transactions'''
+    if is_file_moved is False:
+        dest = "Files Not Moved (File already existed at destination)"
+
     val = transactions.get(dest, [])
     val.append(media_file)
     transactions[dest] = val
@@ -102,10 +75,12 @@ def video_copy_n_sort(videos, source_dir, transactions, dir_layout):
         except IndexError:
             date_dir = default_dir
 
-        create_dir(date_dir)
-        move_media(source_dir, vid, date_dir)
-        add_record(transactions, vid, date_dir)
+        fhutil.create_dir(date_dir)
+        is_file_moved = fhutil.move_file_shutil(source_dir, vid, date_dir)
+        add_record(transactions, vid, date_dir, is_file_moved)
 
+    # did not move these files, would replace file with same name
+    
 
 def img_copy_n_sort(jpg_files, source_dir, transactions, dir_layout):
     '''Logic handling copying and organizing photos'''
@@ -129,12 +104,13 @@ def img_copy_n_sort(jpg_files, source_dir, transactions, dir_layout):
             date = time_tokens[0].split(':')
             date_dir = generate_date_dir(source_dir, date[0], date[1], dir_layout)
 
-        create_dir(date_dir)
-        move_media(source_dir, pic, date_dir)
-        add_record(transactions, pic, date_dir)
+        fhutil.create_dir(date_dir)
+        is_file_moved = fhutil.move_file_shutil(source_dir, pic, date_dir)
+
+        add_record(transactions, pic, date_dir, is_file_moved)
 
 
-def main(source_dir):
+def move_files(source_dir):
     '''Check Directory and find jpg files'''
     try:
         arr = os.listdir(source_dir)
@@ -142,7 +118,7 @@ def main(source_dir):
         print(f"Non-Valid Directory: {e}")
         return
 
-    imgs, videos = find_media_in_dir(arr)
+    imgs, videos = fhutil.find_media_in_dir(arr)
 
     # Return message if no media is found
     if len(imgs) == 0 and len(videos) == 0:
@@ -195,4 +171,4 @@ if __name__ == "__main__":
         print('Optional path not given, current directory used as default.')
         SOURCE_DIR = '/'
 
-    main(SOURCE_DIR)
+    move_files(SOURCE_DIR)
