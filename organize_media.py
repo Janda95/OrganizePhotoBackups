@@ -2,7 +2,7 @@
 import os
 import sys
 from tqdm import tqdm
-import FileHandlerUtil as fhutil
+import file_handler_util as fhutil
 
 DEFAULT_DEST = 'Timestamp_Unavailable'
 

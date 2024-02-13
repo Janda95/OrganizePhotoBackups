@@ -1,7 +1,7 @@
 '''File Handler Supporting Library'''
 import shutil
 import os
-from File_Classes import MediaFileFactory as mff
+from file_classes import MediaFileFactory as mff
 
 
 def find_media_in_dir(source_dir):
