@@ -27,7 +27,7 @@ def pp_transactions(transactions):
 
 
 def file_copy_n_sort(files, source_dir, transactions, dir_layout):
-    """"""
+    """Move files and record every transaction"""
     default_dir = f'{source_dir}{DEFAULT_DEST}'
 
     for media_file in tqdm(files):
