@@ -1,11 +1,8 @@
 '''Python3 Script for organizing batches of jpg, png, and mp4 files with timestamp metadata'''
 import os
 import sys
-import ffmpeg
 from tqdm import tqdm
-from PIL import Image
 import FileHandlerUtil as fhutil
-
 
 DEFAULT_DEST = 'Timestamp_Unavailable'
 
@@ -29,103 +26,32 @@ def pp_transactions(transactions):
         print(msg)
 
 
-def generate_date_dir(source_dir, year, month, dir_layout):
-    '''Generate correct requested date dir based on user input'''
-    date_dir = ""
-
-    if dir_layout == 'month':
-        date_dir = f'{source_dir}{month}'
-    elif dir_layout == 'year':
-        date_dir = f'{source_dir}{year}'
-    elif dir_layout == 'year_month':
-        date_dir = f'{source_dir}{year}_{month}'
-    elif dir_layout == 'year/month':
-        date_dir = f'{source_dir}{year}/{month}'
-    else:
-        print('Invalid dir_layout provided')
-        sys.exit(1)
-
-    return date_dir
-
-
-def video_copy_n_sort(videos, source_dir, transactions, dir_layout):
-    '''Logic handling copying and organizing video files'''
+def file_copy_n_sort(files, source_dir, transactions, dir_layout):
+    """"""
     default_dir = f'{source_dir}{DEFAULT_DEST}'
 
-    for vid in tqdm(videos):
-
-        vid_location = f'{source_dir}{vid}'
-
-        try:
-            probe = ffmpeg.probe(vid_location)
-        except ffmpeg.Error as e:
-            print(e.stderr, file=sys.stderr)
-            sys.exit(1)
-
-        video_stream = next(
-            (stream for stream in probe['streams'] if stream['codec_type'] == 'video'),
-            None)
-        if video_stream is None:
-            print('No video stream found', file=sys.stderr)
-            sys.exit(1)
-
-        try:
-            tokens = video_stream['tags']['creation_time'].split('-')
-            date_dir = generate_date_dir(source_dir, tokens[0], tokens[1], dir_layout)
-        except IndexError:
+    for media_file in tqdm(files):
+        date_dir = media_file.generate_file_dest(dir_layout)
+        if date_dir is None:
             date_dir = default_dir
 
-        fhutil.create_dir(date_dir)
-        is_file_moved = fhutil.move_file_shutil(source_dir, vid, date_dir)
-        add_record(transactions, vid, date_dir, is_file_moved)
-
-    # did not move these files, would replace file with same name
-    
-
-def img_copy_n_sort(jpg_files, source_dir, transactions, dir_layout):
-    '''Logic handling copying and organizing photos'''
-    # Create default directory
-    default_dir = f'{source_dir}{DEFAULT_DEST}'
-
-    # Move each image and display progress
-    for pic in tqdm(jpg_files):
-        try:
-            img_file = Image.open(f'{source_dir}{pic}')
-        except IOError as e:
-            print(f'Invalid Image: {e}')
-
-        exif = img_file.getexif()
-        timestamp = exif.get(306, None)
-        date_dir = default_dir
-
-        # Timestamp Metadata found, prepare date directory
-        if timestamp is not None:
-            time_tokens = timestamp.split()
-            date = time_tokens[0].split(':')
-            date_dir = generate_date_dir(source_dir, date[0], date[1], dir_layout)
-
-        fhutil.create_dir(date_dir)
-        is_file_moved = fhutil.move_file_shutil(source_dir, pic, date_dir)
-
-        add_record(transactions, pic, date_dir, is_file_moved)
+        is_file_moved = fhutil.move_file_shutil(
+            media_file.source_dir, media_file.file_name, date_dir)
+        add_record(transactions, media_file.file_name, date_dir, is_file_moved)
 
 
 def move_files(source_dir):
     '''Check Directory and find jpg files'''
-    try:
-        arr = os.listdir(source_dir)
-    except Exception as e:
-        print(f"Non-Valid Directory: {e}")
-        return
-
-    imgs, videos = fhutil.find_media_in_dir(arr)
+    files, file_records = fhutil.find_media_in_dir(source_dir)
 
     # Return message if no media is found
-    if len(imgs) == 0 and len(videos) == 0:
+    if len(files) == 0:
         print(f'No Media found in {os.getcwd()}/{source_dir}!')
         sys.exit(1)
 
-    msg = f'{len(imgs)} images and {len(videos)} videos found in {os.getcwd()}/{source_dir}'
+    msg = f"\nFiles found in {os.getcwd()}/{source_dir}:"
+    for k, v in file_records.items():
+        msg += f'\n    {k}: {v}'
     print(msg)
 
     valid_res = False
@@ -156,9 +82,7 @@ def move_files(source_dir):
             print('Invalid input, please try again.')
 
     transactions = {}
-    img_copy_n_sort(imgs, source_dir, transactions, dir_layout)
-    video_copy_n_sort(videos, source_dir, transactions, dir_layout)
-
+    file_copy_n_sort(files, source_dir, transactions, dir_layout)
     pp_transactions(transactions)
 
 
