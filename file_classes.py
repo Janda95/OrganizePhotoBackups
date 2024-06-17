@@ -4,6 +4,7 @@ import sys
 import ffmpeg
 from PIL import Image
 
+
 class MediaFile(ABC):
     """Basic Media File Abstract Class"""
     def __init__(self, file_name, source_dir) -> None:
@@ -103,7 +104,7 @@ class MediaFileFactory:
 
         if file_class:
             return file_class(file_name, source_dir)
-
-        # msg = str(file_name) + " data type is not supported"
-        # print(msg)
-        return None
+        else:
+            msg = str(file_name) + " data type is not yet supported"
+            print(msg)
+            return None
