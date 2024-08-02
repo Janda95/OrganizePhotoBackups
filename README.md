@@ -1,4 +1,4 @@
-# Organize_Photo-Backups
+# OrganizePhotoBackups
 
 ### Libraries and versions
 Created using Python 3.12.1 with pyenv
